@@ -1,0 +1,163 @@
+# backend/config/tool_config.toml
+#
+# Cấu hình TOÀN BỘ tool và agent của hệ thống.
+#   - [llm]          : mô hình ngôn ngữ — MẶC ĐỊNH cho mọi agent (không phải tool).
+#   - [tools.<tên>]  : khai báo tool + thông số chi tiết. `enabled = false` tắt
+#                      tool cho mọi agent.
+#   - [agents.<tên>] : bật/tắt agent, DANH SÁCH TOOL agent được phép dùng
+#                      (`tools`), và config riêng của agent.
+#
+# Mỗi agent chỉ nhận AgentToolbox chứa đúng các tool trong `tools`; gọi tool khác → lỗi TOOL_NOT_ALLOWED.
+# Config sai → Backend dừng ngay lúc khởi động.
+
+# Đổi đường dẫn file: biến môi trường TOOL_CONFIG_PATH.
+# Hạ tầng (log, server, database, storage, workspace_base) ở config.toml.
+# Chi tiết: docs/ARCHITECTURE.md
+
+# ============================================================
+# LLM — mặc định cho mọi agent
+# ============================================================
+
+[llm]
+description = "Mô hình ngôn ngữ mặc định của MỌI agent — không phải tool, không khai báo trong agents.*.tools. Nhiều nhà cung cấp, tự chuyển khi lỗi"
+attempts_per_provider = 2        # số lần thử khi CHỈ có 1 nhà cung cấp; nhiều nhà: lỗi là chuyển nhà ngay (vòng tròn)
+failover_rounds = 2              # số vòng gọi lần lượt qua mọi nhà cung cấp trước khi báo lỗi
+provider_cooldown_sec = 300      # nhà cung cấp vừa lỗi hạ tầng (timeout/quá tải/hết quota) bị xếp cuối hàng trong khoảng này
+rate_limit_max_wait_sec = 10     # vòng sau: nhà vừa bị 429 còn hồi ≤ ngưỡng này thì chờ nốt rồi gọi; lâu hơn thì gọi luôn
+# --- DEV ONLY: khi dùng thật đặt dev_mode = "off" ---
+dev_mode = "off"                 # off | cache (phát lại câu trả lời đã ghi, miss thì gọi LLM thật rồi ghi) | demo (LLM giả theo kịch bản)
+dev_cache_delay_sec = 3          # cache hit: chờ chừng này giây rồi mới trả (để UI kịp hiện tiến trình)
+dev_demo_delay_sec = 1.5         # demo: độ trễ mỗi lượt
+
+# Thứ tự khai báo = thứ tự ưu tiên. API key nằm trong .env (api_key_env), KHÔNG ghi vào file này.
+# Nhà cung cấp thiếu key trong .env bị bỏ qua (có cảnh báo lúc khởi động). Cần >= 1 nhà cung cấp dùng được.
+[[llm.providers]]
+name = "Groq-OSS"
+enabled = true
+url = "https://api.groq.com/openai/v1/chat/completions"
+model = "openai/gpt-oss-120b"
+api_key_env = "GROQ_API_KEY"
+reasoning_style = "none"
+
+[[llm.providers]]
+name = "GoogleAI"
+enabled = true
+url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+model = "models/gemini-3.8-flash"
+api_key_env = "GOOGLE_API_KEY"
+reasoning_style = "reasoning_effort"
+
+[[llm.providers]]
+name = "OpenRouter"
+enabled = true
+url = "https://openrouter.ai/api/v1/chat/completions"
+model = "cohere/north-mini-code:free"
+api_key_env = "OPENROUTER_API_KEY"
+reasoning_style = "openrouter"
+
+# Reasoning effort mặc định theo tên model (khớp chuỗi con, không phân biệt hoa thường).
+# Dùng khi agent không đặt `reasoning`. Bỏ trống bảng = không gửi reasoning.
+[llm.reasoning_by_model]
+deepseek = "high"
+gpt = "medium"
+gemini = "medium"
+
+# ============================================================
+# TOOLS
+# ============================================================
+
+[tools.sandbox]
+enabled = true
+description = "Chạy lệnh (unit test) trong container Docker cô lập, mount workspace của phiên"
+image = "python:3.12-slim"
+timeout_sec = 30                 # quá hạn → docker kill, exit_code = -1
+memory_limit = "512m"            # --memory và --memory-swap
+cpu_limit = "1.0"                # --cpus
+pids_limit = 128                 # --pids-limit
+network = "none"                 # --network ("none" = cắt mạng hoàn toàn)
+install_network = "bridge"       # mạng cho lệnh cài thư viện (install_packages), chỉ lệnh pip mới có mạng
+install_timeout_sec = 180
+user = "auto"                    # --user; auto = uid:gid của backend (backend chạy root → 1000:1000 và chuyển chủ workspace)
+max_output_bytes = 262144        # stdout/stderr giữ tối đa (đầu + cuối), mỗi luồng
+
+[tools.git]
+enabled = true
+description = "Quản lý phiên bản trong workspace: init repo, commit, log, diff"
+user_name = "AI Coding Agent"
+user_email = "agent@vibecode.local"
+commit_subject_max_len = 72      # cắt subject commit theo ranh giới từ
+gitignore = """
+# Python
+.deps/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project artifacts
+*.log
+.env
+.env.*
+"""
+
+[tools.formatter]
+enabled = true
+description = "Auto-format code agent vừa ghi bằng ruff (format + sắp xếp import), chạy ở Backend"
+line_length = 100
+sort_imports = true              # thêm `ruff check --select I --fix`
+timeout_sec = 30
+executable = ""                  # "" = `python -m ruff` của môi trường Backend
+
+[tools.workspace]
+enabled = true
+description = "Đọc/ghi file trong workspace của phiên (path jail, atomic write, search/replace edit)"
+max_file_view_bytes = 204800     # API xem file của UI cắt ở ngưỡng này
+max_diff_chars = 300000          # API diff của UI cắt ở ngưỡng này
+
+# ============================================================
+# AGENT (vòng lặp: app/agents/agent.py, prompt: app/agents/prompts/)
+#   tools = nhóm công cụ được cấp:
+#     workspace_read  list_files, read_file, read_outline, search_text
+#     workspace_write write_file, edit_file, delete_file
+#     test            run_tests            (sandbox)
+#     shell           run_command          (python trong sandbox)
+#     git_read        git_status, git_diff
+#     git_write       git_commit
+#     format          format_files (ruff)
+#     install         install_packages (pip, có mạng)
+#     inspect         read_log, find_files, check_syntax, pip_list, git_log, system_info
+#   `finish` luôn có; `ask_user` có khi ask_human = true.
+# ============================================================
+
+[agent]
+tools = ["workspace_read", "workspace_write", "test", "shell", "install", "inspect"]
+history_turns = 5                 # số lượt chat trước đưa vào brief
+max_steps = 30                    # số lời gọi LLM tối đa mỗi lượt
+max_wall_sec = 1800               # thời gian tối đa cả lượt
+max_fail_streak = 3               # 3 lệnh công cụ lỗi liên tiếp → dừng, báo kèm lỗi gốc
+keep_full_results = 2             # chỉ 2 lượt gần nhất giữ nguyên kết quả công cụ; cũ hơn rút còn old_result_chars
+old_result_chars = 400
+request_max_chars = 20000         # ≈ 7k token/lời gọi (Groq free: 8000 token/phút, vượt → HTTP 413); vượt thì rút kết quả cũ nhất trước
+tool_result_max_chars = 3500      # cắt kết quả công cụ dài
+reasoning = ""                    # "" = theo [llm.reasoning_by_model]
+ask_human = true                  # false → không hỏi người dùng
+human_input_timeout_sec = 600
+auto_commit = true
+commit_message_template = "feat: vibe solution for '{prompt}'"
+commit_prompt_max_len = 60

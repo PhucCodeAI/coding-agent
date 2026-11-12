@@ -1,0 +1,22 @@
+services:
+  backend:
+    build: ./backend
+    env_file: backend/.env
+    environment:
+      WORKSPACE_BASE: /app/storage/sandboxes
+      HOST_WORKSPACE_DIR: ${PWD}/backend/storage/sandboxes
+    ports:
+      - "8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backend/storage:/app/storage
+      - ./backend/logs:/app/logs
+    restart: unless-stopped
+
+  ui:
+    build: ./ui
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    restart: unless-stopped

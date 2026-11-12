@@ -1,0 +1,41 @@
+[project]
+name = "coding-agent"
+version = "0.1.0"
+description = "Coding agent tự viết: vòng lặp tool-calling gọi LLM qua httpx, chạy test trong Docker sandbox, trace + phiên trên Supabase."
+readme = "../README.md"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.138.1",
+    "httpx>=0.28.1",
+    "loguru>=0.7.3",
+    "pydantic>=2.13.4",
+    "python-dotenv>=1.0",
+    "ruff>=0.6",
+    "uvicorn>=0.49.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 160
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "D"]
+ignore = ["E501", "D100", "D104"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"app/workflow/tools/definitions.py" = ["D417"]  # `ctx` do hệ thống truyền, không mô tả cho LLM

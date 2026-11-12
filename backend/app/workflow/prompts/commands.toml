@@ -1,0 +1,74 @@
+# Lệnh hệ thống người dùng gõ ở đầu tin nhắn (/tên). mode: code = được sửa file · chat = chỉ đọc, trả lời.
+# `instruction` được thêm vào brief gửi model; UI lấy danh sách qua GET /chat/commands.
+
+[[commands]]
+name = "test"
+title = "Viết & chạy unit test"
+description = "Sinh unit test đầy đủ (case biên, lỗi) cho file/hàm rồi chạy trong sandbox"
+mode = "code"
+arg_hint = "@file hoặc mô tả hàm cần test"
+instruction = "Viết unit test đầy đủ cho phần được chỉ định: case thường, case biên, input sai và ngoại lệ. Chạy test. Không đổi hành vi code hiện có trừ khi test phát hiện bug — khi đó sửa bug và nói rõ."
+
+[[commands]]
+name = "fix"
+title = "Sửa bug"
+description = "Tìm nguyên nhân gốc từ mô tả/traceback, sửa và thêm test tái hiện lỗi"
+mode = "code"
+arg_hint = "dán traceback hoặc mô tả lỗi"
+instruction = "Tìm nguyên nhân gốc của lỗi được mô tả và sửa tận gốc (không che lỗi). Thêm unit test tái hiện đúng lỗi này để chứng minh đã sửa; toàn bộ test phải pass."
+
+[[commands]]
+name = "refactor"
+title = "Refactor"
+description = "Làm code rõ ràng, dễ bảo trì nhưng giữ nguyên hành vi — test vẫn pass"
+mode = "code"
+arg_hint = "@file cần refactor"
+instruction = "Refactor phần được chỉ định cho rõ ràng, dễ bảo trì (tách hàm nhỏ, đặt tên rõ, bỏ trùng lặp, type hints) nhưng GIỮ NGUYÊN hành vi. Toàn bộ test hiện có phải pass; thiếu test thì bổ sung trước khi refactor."
+
+[[commands]]
+name = "api"
+title = "Tạo endpoint REST"
+description = "Router FastAPI + schema Pydantic + validate + mã lỗi HTTP + test TestClient"
+mode = "code"
+arg_hint = "VD: CRUD /users (name, email)"
+instruction = "Thiết kế và cài đặt endpoint REST bằng FastAPI: router, schema Pydantic cho request/response, validate input, trả mã lỗi HTTP đúng chuẩn (400/404/409/422), tách service layer khỏi router. Cài fastapi + httpx bằng install_packages rồi viết test bằng fastapi.testclient.TestClient."
+
+[[commands]]
+name = "sql"
+title = "Schema & truy vấn SQL"
+description = "Thiết kế bảng, viết truy vấn + lớp truy cập dữ liệu, test với SQLite in-memory"
+mode = "code"
+arg_hint = "VD: bảng orders, top 5 khách chi nhiều nhất"
+instruction = "Thiết kế schema và viết truy vấn SQL cho yêu cầu, kèm lớp truy cập dữ liệu (repository) dùng sqlite3 chuẩn Python với truy vấn tham số hóa (chống SQL injection). Viết unit test với database SQLite in-memory."
+
+[[commands]]
+name = "perf"
+title = "Tối ưu hiệu năng"
+description = "Giảm độ phức tạp / I-O, giữ nguyên kết quả, có test xác nhận"
+mode = "code"
+arg_hint = "@file hoặc hàm chạy chậm"
+instruction = "Phân tích và tối ưu hiệu năng phần được chỉ định (độ phức tạp thuật toán, cấu trúc dữ liệu, I/O thừa). Giữ nguyên kết quả đầu ra; thêm test xác nhận tính đúng và nêu độ phức tạp trước/sau trong câu trả lời."
+
+[[commands]]
+name = "docs"
+title = "Docstring & type hints"
+description = "Bổ sung docstring Google style và type hints, không đổi logic"
+mode = "code"
+arg_hint = "@file cần viết tài liệu"
+instruction = "Bổ sung docstring chuẩn Google style và type hints đầy đủ cho phần được chỉ định, KHÔNG đổi logic. Test hiện có phải pass."
+
+[[commands]]
+name = "explain"
+title = "Giải thích code"
+description = "Giải thích luồng xử lý, ý đồ thiết kế — chỉ đọc, không sửa file"
+mode = "chat"
+arg_hint = "@file hoặc câu hỏi"
+instruction = "CHỈ giải thích, KHÔNG viết hay sửa file. Trình bày mục đích, luồng xử lý chính, các điểm cần lưu ý, dựa trên nội dung file đính kèm (nếu có)."
+
+[[commands]]
+name = "review"
+title = "Review code"
+description = "Tìm bug, lỗ hổng bảo mật, vấn đề hiệu năng & thiết kế — chỉ đọc, không sửa file"
+mode = "chat"
+arg_hint = "@file cần review"
+instruction = "CHỈ review, KHÔNG viết hay sửa file. Liệt kê vấn đề theo mức độ (nghiêm trọng → nhỏ): bug, bảo mật, hiệu năng, thiết kế/khả năng bảo trì; mỗi vấn đề nêu vị trí, lý do và cách sửa ngắn gọn. Dựa trên nội dung file đính kèm (nếu có)."

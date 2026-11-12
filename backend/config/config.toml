@@ -1,0 +1,23 @@
+# backend/config/config.toml — HẠ TẦNG (log, server, database, storage, đường dẫn)...
+
+[logs]
+log_path = "./logs"
+level = "INFO"
+rotation = "10 MB"
+retention = "7 days"
+
+[server]
+host = "0.0.0.0"
+port = 8000
+cors_origins = ["http://localhost:5173"]
+
+[database]
+table_name = "traces"
+sessions_table = "sessions"
+messages_table = "session_messages"
+
+[storage]
+bucket = "trace-logs"
+
+[workspace]
+base = "./storage/sandboxes"
